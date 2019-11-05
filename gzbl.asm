@@ -1,6 +1,6 @@
 ; GZ family BootLoader (frame code, main file)
 
-#include "gz60.asm"             ; Load microcontroller specific register definitions
+#include "gz60.inc"             ; Load microcontroller specific register definitions
 
 NL              equ     $0A     ; New line character (Linux)
 ROUTINESINRAM   equ     $0200	; Start of area of Flash handler routines in RAM
@@ -22,7 +22,7 @@ cs_trign        ds      1  	; frame checksum, and before frames number of receiv
 comtimer        ds      1       ; timeout timer for serial UART communication
 nosysinfo       ds      1       ; Administration that "no system software" info was already printed out (do not print it again)
 
-wr_datat        equ     $0080  	; 128 byte write data buffer. It can contain data with any length and from any address.  
+wr_datat        equ     $0080  	; 128 byte write data buffer. It can contain data with any length and from any address.
 data            equ     $0100  	; 128 byte buffer for flash manipulation. Always alligned to a complete page
 stack_top       equ     $043F  	; 64 byte stack reserved for bootloader
 
@@ -30,7 +30,7 @@ stack_top       equ     $043F  	; 64 byte stack reserved for bootloader
 #ROM
 ;Start of bootloader. This shall be as much as possible in last part of Flash1.
 ; This ensures compatibility with smaller memory variant uCs, and most space for system software.
-; To be adjusted manually without overlap in gz60.asm.
+; To be adjusted manually without overlap in gz60.inc.
 
 bl_start_addr
 ;-----------------------------------------
@@ -44,13 +44,13 @@ nsstr   fcs     " Application is not found. Stay in BootLoader.",NL
 ;RUTINOK
 ;-----------------------------------------
 
-#include "cgm.asm"
-#include "lib.asm"
-#include "flash.asm"
-#include "pcb.asm"
-#include "sci.asm"
-#include "tbm.asm"
-#include "term.asm"
+#include "cgm.sub"
+#include "lib.sub"
+#include "flash.sub"
+#include "pcb.sub"
+#include "sci.sub"
+#include "tbm.sub"
+#include "term.sub"
 
 ;-----------------------------------------
 ; MAIN rutinok
@@ -92,7 +92,7 @@ entry
         bpl     bp_1            ; Jump when plus, so MSB is zero
         inca
 bp_1
-        sta     FL1BPR          
+        sta     FL1BPR
 
         ; Unlock the whole Frash2
         lda     #$FF
@@ -108,7 +108,7 @@ bp_1
         @LEDOFF
         @LEDINIT
 
-	; PCB specific initialization (if needed) 
+	; PCB specific initialization (if needed)
         jsr     PCB_Init
 
 	; Copy flash handler routines into RAM
@@ -136,7 +136,7 @@ bp_1
 ; Here start the main loop
 ; -----------------------------------------------------------------------------------------
 main_time
-        
+
         @tim			; Pull up timer
         @LEDON
 main_loop
@@ -180,7 +180,7 @@ nosys
 
         ; Print "no sys" info
         ldhx    #nsstr
-        jsr     sciputs 
+        jsr     sciputs
 
         ; Stay in bootloader further
         bra     stayinboot
@@ -189,7 +189,7 @@ nosys
 issys
 	; Print "is sys" info
         ldhx    #sysstr
-        jsr     sciputs 
+        jsr     sciputs
 
 	; Load start addess of system software, and jump to there
         lda     Vpll
@@ -211,11 +211,11 @@ delay_c
 ; Task to handle serial communication
 serialtask
         jsr     TBMHandle
-        
+
         ; Timeout check
         tst     comtimer
         @req			; If timeout reached, return from task
-        
+
         ; Try to read a character
         jsr     scigetc
         bcc     serialtask      ; If no character received, wait further
@@ -223,19 +223,19 @@ serialtask
         ; If 't' arrived, terminal is needed
         cmp     #'t'
         @jeq    terminal
-        
+
         ; Check for download trigger character
         cmp     #$1C
         bne     serialtask      ; If no trigger character received, wait further
         ; If expected trigger character arrived
         inc     cs_trign        ; Count the trigger characters
-        
+
         ; Check number of received trigger characters
         lda     cs_trign
         cmp     #4		; shall be 4 for successfull connection
         bne     serialtask      ; If less that 4 received only, wait further
 
-        ; Expected number of trigger characters were received, 
+        ; Expected number of trigger characters were received,
         ;  this is a valid download request.
 
         ; Send answer to confirm successfull trigger reception (4 times $E3)
@@ -251,9 +251,9 @@ serialtask
 ; $56,$AB,lenh,lenl,addrh,addrl,d0,d1,...dn,cs
 ; Answer frame:
 ; $BA,$65,addrh,addrl,error
-;  error=0: successfull                
+;  error=0: successfull
 ;  error=1: cs error,
-;  error=2: address error              
+;  error=2: address error
 ;  error=3: timeout error
 ;  error=4: len is zero
 ;  error=5: len is too high (>128)
@@ -267,7 +267,7 @@ serialtask
 ;                 - wait for address, save it, if wrong, read a new frame
 ;                 - wait for data bytes, save it, and calculate checksum meantime
 ;                 - wait for checksum, compare it, if wrong, read a new frame
-;                   
+;
 ; -----------------------------------------------------------------------
 frames
         ; Switch debug LED on
@@ -338,12 +338,12 @@ newdata
         bcc     errcode3        ; In case of timeout: errcode3
         cmp     cs_trign	; Compare with calculated checksum
         beq     wr2fls          ; If same, jump to write (write from RAM back to Flash)
-errcode1 
+errcode1
         lda     #1              ; CS error code
-errcode0 
+errcode0
         bsr     answer		; Send answer
         bra     frames		; Wait for another frame
-errcode2   
+errcode2
         lda     #2              ; Addr error
         bra     errcode0	; Send answer and Wait for another frame
 errcode4
@@ -366,7 +366,7 @@ addcs   add     cs_trign
         sta     cs_trign
         rts
 
-; Wait a character on UART till timeout 
+; Wait a character on UART till timeout
 scigetct
         @tim
 scigetctc
@@ -391,14 +391,14 @@ wr2fls	; Here RAM mirror is ready to write back into Flash.
         beq     addr_ok         ; $FF addresses are allowed to program because of interrupt vectors
         bra     errcode2        ; Wrong address, not allowed dor bootloader to override itself
 
-addr_ok        
+addr_ok
         ; Check if requested number of data bytes from start address is still inside the page
         lda     dump_addr+1     ; Load address low byte
         and     #$7F		; Mask out page counter bits
         deca
         add     wr_datac	; Add number of bytes
         bmi     errcode6        ; If out of page boundary, addition result will be $80 or larger, so negative
-        
+
         ; Write page
         jsr     write
 
@@ -438,7 +438,7 @@ bl_end_addr     equ     $
 
 ; Serial number (16 byte reserved, I prefer bootloader download date in bcd format)
 ;  Can be set here and compile, but my downloader (Host PC application) updates
-;  this field with the time of loading automatic. By this way there will never be 
+;  this field with the time of loading automatic. By this way there will never be
 ;  two HW with same serial number.
         org     SERIAL_NUMBER
         db      $00,$20,$19,$10,$05,$22,$39,$35
