@@ -27,7 +27,6 @@ nosysinfo           rmb       1                   ; Administration that 'no syst
 
 wr_datat            equ       $0080               ; 128 byte write data buffer. It can contain data with any length and from any address.
 data                equ       $0100               ; 128 byte buffer for flash manipulation. Always aligned to a complete page
-stack_top           equ       $043F               ; 64 byte stack reserved for bootloader
 
 ;*******************************************************************************
                     #ROM
@@ -67,7 +66,7 @@ nsstr               fcs       ' Application is not found. Stay in BootLoader.',N
 Start               proc
                     sei                           ; Disable interrupts
           ;-------------------------------------- ; Init Stack
-                    ldhx      #stack_top
+                    ldhx      #STACKTOP
                     txs
           ;-------------------------------------- ; Save reset status register, because it is cleared during read
                     lda       SRSR
@@ -398,4 +397,4 @@ answer              proc
                     org       Vreset
                     dw        Start
 
-                    #Hint     ...................................................................................................... {1957(f4)} bytes, RAM: {21(f5)}, CRC: $AF0D
+                    #Hint     ...................................................................................................... {1957(f4)} bytes, RAM: {21(f5)}, CRC: $41C6

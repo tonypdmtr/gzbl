@@ -1,12 +1,12 @@
 ; Microcontroller specific register definitions
 
 ;*******************************************************************************
-;            HC08GZ60 FRAMEWORK INCLUDE FILE FOR ASM8 ASSEMBLER               *
+;            HC08GZ60 FRAMEWORK INCLUDE FILE FOR ASM8 ASSEMBLER                *
 ;*******************************************************************************
-;            FREEWARE, written by Janos BENCSIK  <hc08@butyi.hu>              *
+;            FREEWARE, written by Janos BENCSIK  <hc08@butyi.hu>               *
 ;*******************************************************************************
 
-;                   #Uses     macros.inc
+                    #Uses     macros.inc
                     #Message  **********************
                     #Message  * Target: HC908GZ60  *
                     #Message  **********************
@@ -121,7 +121,6 @@ PSSB_29P32          equ       %00011101           ; 0.90625
 PSSB_30P32          equ       %00011110           ; 0.9375
 PSSB_31P32          equ       %00011111           ; 0.96875
 
-
 SCIACTL             def       $0a,1               ; ESCI arbiter control register
 AM1                 equ       $80                 ; Loop mode select bit
 ALOST               equ       $40                 ; Enable SCI bit
@@ -193,7 +192,6 @@ ORIE_               def       %00001000           ; Receiver overrun IT enable b
 NEIE_               def       %00000100           ; Receiver noise error IT enable bit
 FEIE_               def       %00000010           ; Receiver framing error IT enable bit
 PEIE_               def       %00000001           ; Receiver parity error IT enable bit
-
 
 SCS1                def       $16,1               ; ESCI status register 1
 
@@ -442,7 +440,6 @@ BR_500              equ       0
 BR_250              equ       1
 BR_125              equ       2
 
-
 CBTR1               equ       $503                ; CAN Bus Timing Register 1
 
 SAMP                equ       $80                 ; Sampling (0=no, 1=3 samples)
@@ -522,19 +519,19 @@ CTXBUF1             equ       $560                ; CAN Transmit Buffer 1
 CTXBUF2             equ       $570                ; CAN Transmit Buffer 2
 
 CBF_ID              equ       $00                 ; CAN Message Identifier 0 index
-; CBF_ID0 EQU $00 ;  CAN Message Identifier 0 index
-; CBF_ID1 EQU $01 ;  CAN Message Identifier 1 index
-; CBF_ID2 EQU $02 ;  CAN Message Identifier 2 index
-; CBF_ID3 EQU $03 ;  CAN Message Identifier 3 index
+;CBF_ID0            equ       $00                 ; CAN Message Identifier 0 index
+;CBF_ID1            equ       $01                 ; CAN Message Identifier 1 index
+;CBF_ID2            equ       $02                 ; CAN Message Identifier 2 index
+;CBF_ID3            equ       $03                 ; CAN Message Identifier 3 index
 CBF_DAT             equ       $04                 ; CAN Message Data index
-; CBF_DAT0 EQU $04 ;  CAN Message Data index
-; CBF_DAT1 EQU $05 ;  CAN Message Data index
-; CBF_DAT2 EQU $06 ;  CAN Message Data index
-; CBF_DAT3 EQU $07 ;  CAN Message Data index
-; CBF_DAT4 EQU $08 ;  CAN Message Data index
-; CBF_DAT5 EQU $09 ;  CAN Message Data index
-; CBF_DAT6 EQU $0a ;  CAN Message Data index
-; CBF_DAT7 EQU $0b ;  CAN Message Data index
+;CBF_DAT0           equ       $04                 ; CAN Message Data index
+;CBF_DAT1           equ       $05                 ; CAN Message Data index
+;CBF_DAT2           equ       $06                 ; CAN Message Data index
+;CBF_DAT3           equ       $07                 ; CAN Message Data index
+;CBF_DAT4           equ       $08                 ; CAN Message Data index
+;CBF_DAT5           equ       $09                 ; CAN Message Data index
+;CBF_DAT6           equ       $0a                 ; CAN Message Data index
+;CBF_DAT7           equ       $0b                 ; CAN Message Data index
 CBF_LEN             equ       $0c                 ; CAN Message length index
 CBF_PRI             equ       $0d                 ; CAN Message transmit buffer priority index
 
@@ -565,19 +562,19 @@ _HC908GZ60_         def       *                   ; Tells us this INCLUDE has be
 
 FLASH_PAGE_SIZE     def       128                 ; minimum that must be erased at once
 
-                    #if       FLASH_PAGE_SIZE <> 128
+          #if FLASH_PAGE_SIZE <> 128
                     #Error    FLASH_PAGE_SIZE should be fixed at 128
-                    #endif
+          #endif
 
 FLASH_DATA_SIZE     def       0                   ; default: no runtime flash storage
 
 VECTORS             def       $FFCC               ; start of fixed vectors
-                    #ifdef    RVECTORS
+          #ifdef    RVECTORS
 VECTORS             set       RVECTORS
-                    #endif
+          #endif
 
 ; --- Vectors
-                    #Temp     VECTORS
+                    #temp     VECTORS
 Vtpm2ch5            next      :temp,2             ; TPM2 channel 5 vector
 Vtpm2ch4            next      :temp,2             ; TPM2 channel 4 vector
 Vtpm2ch3            next      :temp,2             ; TPM2 channel 3 vector
@@ -605,23 +602,21 @@ Virq                next      :temp,2             ; IRQ vector
 Vswi                next      :temp,2             ; SWI vector
 Vreset              next      :temp,2             ; reset vector
 
-
 ROM                 def       $F500
 ROM_END             def       $FDFF               ; end of all flash (before NV register and fixed vectors)
 
-RAM                 def       $0040
-RAM_END             def       $0050               ; usually this is $00FF
+RAM                 def       $0050
+RAM_END             def       $00FF               ; usually this is $00FF
 
 XRAM                def       $0100
-XRAM_END            def       $043F
+XRAM_END            def       $044F
 
-;Far2 RAM is not supported by ASM8, but available on GZ32, GZ48, GZ60
-FAR2_RAM            def       $0580
-FAR2_RAM_END        def       $097F
+;FAR2 RAM available on GZ32, GZ48, GZ60
+RAM2_RAM            def       $0A00
+RAM2_RAM_END        def       $0DFF
 
 FLASH_START         def       ROM
 FLASH_END           def       ROM_END
-
 
 BL_INFO             def       $FD00               ; Reserved are for further bootloader related information
 BL_SERVICES         def       $FDC0               ; Jumps for bootloader service what can be used by system software
@@ -633,11 +628,11 @@ SERIAL_NUMBER       def       $FDF0               ; S/N (7 bytes, because 1 byte
 HZ                  def       5200000
   #endif
 #endif
-;                   #Uses     common.inc
+                    #Uses     common.inc
 
                     #DATA
 
-                    #Vectors
+                    #VECTORS
                     org       VECTORS
 
                     #RAM
