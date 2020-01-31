@@ -11,37 +11,27 @@ Done$$$             endm
 ; hx = hx + a  (word)
 
 addhxanda           proc
-                    psha                          ; Save A
-                    txa                           ; X (op1 lo)
-                    add       1,asp               ; + (op2 lo)
-                    tax                           ; Store to X (op1 lo)
-                    tha                           ; H (op1 hi)
-                    adc       #0                  ; Add with carry
-                    tah                           ; Store to H (op1 hi)
-                    ais       #1                  ; Restore A (drop out)
+                    aax
                     rts
 
 ;*******************************************************************************
 
 memcopy             proc
                     sthx      mc_num
+          ;--------------------------------------
 Loop@@              ldhx      mc_src
                     lda       ,x
+                    aix       #1
+                    sthx      mc_src
+          ;--------------------------------------
                     ldhx      mc_dest
                     sta       ,x
-                    inc       mc_src+1
-                    bne       _1@@
-                    inc       mc_src
-_1@@                inc       mc_dest+1
-                    bne       _2@@
-                    inc       mc_dest
-_2@@                lda       mc_num+1
-                    sub       #1
-                    sta       mc_num+1
-                    lda       mc_num
-                    sbc       #0
-                    sta       mc_num
+                    aix       #1
+                    sthx      mc_dest
+          ;--------------------------------------
                     ldhx      mc_num
+                    aix       #-1
+                    sthx      mc_num
                     bne       Loop@@
                     rts
 

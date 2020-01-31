@@ -5,7 +5,7 @@
                     #Uses     gz60.inc            ; Load microcontroller specific register definitions
 
 NL                  equ       10                  ; New line character (Linux)
-ROUTINESINRAM       equ       $0200               ; Start of area of Flash handler routines in RAM
+ROUTINES_IN_RAM     equ       $0200               ; Start of area of Flash handler routines in RAM
 
 ;*******************************************************************************
                     #RAM
@@ -38,15 +38,15 @@ data                equ       $0100               ; 128 byte buffer for flash ma
 ; To be adjusted manually without overlap in gz60.inc
 ?BootloaderStart
 ;*******************************************************************************
-; STRINGS
+; Strings
 ;*******************************************************************************
 
-welcome             fcs       NL,'HC908GZ60 BootLoader (github.com/butyi/gzbl)',NL
+welcome             fcs       NL,'HC908GZ60 BootLoader (github.com/tonypdmtr/gzbl)',NL
 sysstr              fcs       ' Application is starting.',NL
 nsstr               fcs       ' Application is not found. Stay in BootLoader.',NL
 
 ;*******************************************************************************
-; RUTINOK
+; Routines
 ;*******************************************************************************
 
                     #Uses     cgm.sub
@@ -58,7 +58,7 @@ nsstr               fcs       ' Application is not found. Stay in BootLoader.',N
                     #Uses     term.sub
 
 ;*******************************************************************************
-; MAIN rutinok
+; Main routine
 ;*******************************************************************************
 
 ; Main entry point. This address shall be in Reset Vector.
@@ -105,7 +105,7 @@ _1@@                sta       FL1BPR
           ;-------------------------------------- ; Copy flash handler routines into RAM
                     ldhx      #ramprog
                     sthx      mc_src
-                    ldhx      #ROUTINESINRAM
+                    ldhx      #ROUTINES_IN_RAM
                     sthx      mc_dest
                     ldhx      #::ramprog
                     jsr       memcopy
@@ -120,7 +120,7 @@ _1@@                sta       FL1BPR
 ; Here starts the main loop
 
 MainTime            proc
-                    @tim                          ; Pull up timer
+                    @msec                         ; Pull up timer
                     @ledon
 MainLoop            jsr       TBMHandle
           ;-------------------------------------- ; wait for communication attempt on UART
@@ -146,7 +146,8 @@ _2@@                @ledoff
                     and       Vpll+1
                     coma
                     bne       _3@@                ; there is system software
-          ;-------------------------------------- ; Here comes if there is no system software
+          ;--------------------------------------
+          ; Come here if there is no system software
           ;-------------------------------------- ; Print 'no sys' info only once (first time)
                     tst       nosysinfo           ; if 'no sys' info was already printed
                     bne       stayinboot          ; do not write it again
@@ -156,12 +157,12 @@ _2@@                @ledoff
                     jsr       sciputs
           ;-------------------------------------- ; Stay in bootloader further
                     bra       stayinboot
-          ;-------------------------------------- ; There is system software, jump to there
+          ;-------------------------------------- ; There is system software, jump there
 _3@@
           ;-------------------------------------- ; Print 'is sys' info
                     ldhx      #sysstr
                     jsr       sciputs
-          ;-------------------------------------- ; Load start addess of system software, and jump to there
+          ;-------------------------------------- ; Load start addess of system software, and jump there
                     lda       Vpll
                     tah
                     ldx       Vpll+1
@@ -171,7 +172,7 @@ _3@@
 ; There is no system software. Wait 0,5s and jump to wait download attempt again
 
 stayinboot          proc
-                    mov       #15,comtimer
+                    @msec     500
 Loop@@              jsr       TBMHandle
                     tst       comtimer
                     bne       Loop@@
@@ -189,19 +190,19 @@ Loop@@              jsr       TBMHandle
                     jsr       scigetc
                     bcc       Loop@@              ; If no character received, wait further
           ;-------------------------------------- ; If 't' arrived, terminal is needed
-                    cmp       #'t'
+                    cmpa      #'t'
                     jeq       Terminal
           ;-------------------------------------- ; Check for download trigger character
-                    cmp       #$1C
+                    cmpa      #$1C
                     bne       Loop@@              ; If no trigger character received, wait further
           ;-------------------------------------- ; If expected trigger character arrived
                     inc       cs_trign            ; Count the trigger characters
           ;-------------------------------------- ; Check number of received trigger characters
                     lda       cs_trign
-                    cmp       #4                  ; shall be 4 for successful connection
+                    cmpa      #4                  ; shall be 4 for successful connection
                     bne       Loop@@              ; If less that 4 received only, wait further
           ;--------------------------------------
-          ; Expected number of trigger characters were received,
+          ; Expected number of trigger characters were received, so
           ; this is a valid download request.
           ; Send answer to confirm successful trigger reception (4 times $E3)
           ;--------------------------------------
@@ -235,12 +236,12 @@ Frames@@            @ledon                        ; Switch debug LED on
                     bcs       _1@@                ; If character received, go further
                     rts                           ; If no character received during time, return (lost communication)
           ;-------------------------------------- ; Character received, check it
-_1@@                cmp       #$56
+_1@@                cmpa      #$56
                     bne       Frames@@            ; Not the expected, wait for the next
           ;-------------------------------------- ; Wait for second byte of frame header ($AB)
                     bsr       scigetct            ; Timeout type getc
                     bcc       ?ErrCode3           ; In case of timeout: ?ErrCode3
-                    cmp       #$AB                ; Character received, check it
+                    cmpa      #$AB                ; Character received, check it
                     bne       Frames@@            ; Not the expected, wait for the next frame
           ;-------------------------------------- ; Frame header ($56 $AB) arrived
                     clr       cs_trign            ; clear checksum variable
@@ -255,7 +256,7 @@ _1@@                cmp       #$56
                     bsr       scigetct            ; Timeout type getc
                     bcc       ?ErrCode3           ; In case of timeout: ?ErrCode3
                     beq       ?ErrCode4           ; If len=0: ?ErrCode4
-                    cmp       #128
+                    cmpa      #128
                     bhi       ?ErrCode5           ; If 128<len: ?ErrCode5
                     sta       wr_datac            ; Store len parameter in RAM
                     bsr       addcs               ; Add byte to checksum for later check
@@ -286,8 +287,8 @@ NewData@@           bsr       scigetct            ; Timeout type getc
           ;-------------------------------------- ; Read checksum
                     bsr       scigetct            ; Timeout type getc
                     bcc       ?ErrCode3           ; In case of timeout: ?ErrCode3
-                    cmp       cs_trign            ; Compare with calculated checksum
-                    beq       wr2fls              ; If same, jump to write (write from RAM back to Flash)
+                    cbeq      cs_trign,wr2fls     ; Compare with calculated checksum
+                                                  ; If same, jump to write (write from RAM back to Flash)
                     lda       #1                  ; CS error code
 ?ErrCode0           bsr       answer              ; Send answer
                     bra       Frames@@            ; Wait for another frame
@@ -314,7 +315,7 @@ addcs               proc
 ; Wait a character on UART till timeout
 
 scigetct            proc
-                    @tim
+                    @msec
 Loop@@              jsr       TBMHandle
                     tst       comtimer
                     clc                           ; Clear carry bit to report timeout
@@ -332,11 +333,11 @@ wr2fls              proc                          ; Here RAM mirror is ready to 
           ; program (Allowed: before boorloader and vectors)
           ;--------------------------------------
                     lda       dump_addr           ; Load address Hi byte allows only double pages check
-                    cmp       #]?BootloaderStart  ; Compare it with high byte of start address of bootloader
+                    cmpa      #]?BootloaderStart  ; Compare it with high byte of start address of bootloader
                     blo       AddrOk@@            ; Lower addresses are allowed to program
                     coma                          ; Negate to check $FF value, what is also allowed because of interrupt vectors
-                    beq       AddrOk@@            ; $FF addresses are allowed to program because of interrupt vectors
-                    bra       ?ErrCode2           ; Wrong address, not allowed dor bootloader to override itself
+                    bne       ?ErrCode2           ; $FF addresses are allowed to program because of interrupt vectors
+                                                  ; Wrong address, not allowed for bootloader to override itself
           ;--------------------------------------
           ; Check if requested number of data bytes
           ; from start address is still inside the page
@@ -382,7 +383,7 @@ answer              proc
                     db        ${:sec}
 
 ;*******************************************************************************
-; Serial number (16 byte reserved, I prefer bootloader download date in bcd format)
+; Serial number (16 byte reserved, I prefer bootloader download date in BCD format)
 ; Can be set here and compile, but my downloader (Host PC application) updates
 ; this field with the time of loading automatic. By this way there will never be
 ; two HW with same serial number.
@@ -397,4 +398,8 @@ answer              proc
                     org       Vreset
                     dw        Start
 
-                    #Hint     ...................................................................................................... {1957(f4)} bytes, RAM: {21(f5)}, CRC: $41C6
+?                   macro
+                    #Hint     ~'......................................................................................................'.1.{:width-62}~ {1927(f4)} bytes, RAM: {21(f5)}, CRC: $F05E
+                    endm
+
+                    @?

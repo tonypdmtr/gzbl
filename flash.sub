@@ -150,13 +150,12 @@ write               proc
                     ldx       wr_datac
                     clrh
                     jsr       memcopy
-          ;-------------------------------------- ; Check if page is the last
+          ;-------------------------------------- ; Check if page is the last one
                     ldhx      address
                     cphx      #$FF80
                     bne       NotLast@@
           ;--------------------------------------
-          ; If this is the last page
-          ; Copy content of Vreset to Vpll
+          ; If this is the last page, copy content of Vreset to Vpll
           ;--------------------------------------
                     lda       data+$FE-$80        ; hi
                     sta       data+$F8-$80        ; ( $FFF8 & $7F )
@@ -176,7 +175,7 @@ NotLast@@           bra       ?writepage          ; Write 128 bytes long page
 ; Page erase: write $FF to every byte on page
 
 erasepage           proc
-; Fill up buffer with data $FF-el
+          ;-------------------------------------- ; Fill up buffer with data $FF-el
                     clrh
                     ldx       #128
                     lda       #$FF
@@ -202,9 +201,9 @@ _2@@                ldhx      #FL1CR
                     sthx      p_flcr
                     ldhx      #FL1BPR
                     sthx      p_flbpr
-_End@@              jsr       ROUTINESINRAM       ; Now jump up to RAM for erase/write and after come back to here
+_End@@              jsr       ROUTINES_IN_RAM     ; Now jump up to RAM for erase/write and after come back to here
                     bclr      COPD_,CONFIG1       ; Switch on watchdog
-          ;-------------------------------------- ; Resore address to original value
+          ;-------------------------------------- ; Restore address to original value
                     lda       address+1
                     eor       #$80
                     sta       address+1

@@ -6,32 +6,17 @@
 ; MACROS
 ;*******************************************************************************
 
-putspace            macro
+putspace            macro     Count
+                    mdef      1,1
                     lda       #' '
+                    mdo
                     jsr       sciputc
+                    mloop     ~1~
                     endm
 ;-------------------------------------------------------------------------------
 putn                macro
-                    lda       #10                 ; '\n'
+                    lda       #LF                 ; '\n'
                     jsr       sciputc
-                    endm
-;-------------------------------------------------------------------------------
-puta                macro
-                    jsr       sciputb
-                    @putspace
-                    endm
-;-------------------------------------------------------------------------------
-putk                macro     kar
-                    lda       #~@~
-                    jsr       sciputc
-                    endm
-;-------------------------------------------------------------------------------
-puthx               macro
-                    tha
-                    jsr       sciputb
-                    txa
-                    jsr       sciputb
-                    @putspace
                     endm
 
 ;*******************************************************************************
@@ -39,19 +24,19 @@ puthx               macro
 ;*******************************************************************************
 
 startstrt           fcs       ' Push T button for terminal!',NL
-termstr             fcs       'Serial terminal. Push ? to help!',NL
+termstr             fcs       'Serial terminal. Push ? for help!',NL
 warn1str            fcs       NL,'Warning! Last byte was half byte.',NL
-err1str             fcs       NL,'Error! Data are outside of page.',NL
-err2str             fcs       NL,'Error! Too high address.',NL
-helpstr             fcc       NL,'x : exit from terminal.'
+err1str             fcs       NL,'Error! Data outside page.',NL
+err2str             fcs       NL,'Error! Address too high.',NL
+helpstr             fcc       NL,'x : Exit terminal.'
                     fcc       NL,'r : Reset MCU.'
-                    fcc       NL,'dAAAA : Dump from address AAAAh (Default 0000h).'
+                    fcc       NL,'dAAAA : Dump from address $AAAA (Default $0000).'
                     fcc       NL,'n : Next (Dump).'
                     fcc       NL,'b : Back (Dump).'
                     fcc       NL,'a : Again (Dump).'
-                    fcc       NL,'hAAAA11223344 [ENTER] : Hexa write from address AAAAh,'
-                    fcc       NL,'tAAAAwww.butyi.hu [ENTER] : Text write from address AAAAh,'
-                    fcc       NL,'eAAAA : Erase page from address AAAAh (128 bytes).'
+                    fcc       NL,'hAAAA11223344 [ENTER] : Hexa write from address $AAAA,'
+                    fcc       NL,'tAAAAwww.butyi.hu [ENTER] : Text write from address $AAAA,'
+                    fcc       NL,'eAAAA : Erase page from address $AAAA (128 bytes).'
                     fcs       NL
 
 ;*******************************************************************************
@@ -66,25 +51,23 @@ egetkey             proc
 Loop@@              jsr       TBMHandle           ; loop when waiting for a terminal character
                     @ledneg                       ; Toggle LED
           ;--------------------------------------
-          ; Check if timeout elapsed (user didn't
-          ; do anything in the last 8s)
+          ; Check if timeout elapsed (user didn't do anything in the last 8s)
           ;--------------------------------------
                     tst       comtimer
                     bne       _1@@                ; Jump through on timeout handling
           ;--------------------------------------
-          ; Timeout handling: Simulate pushed 'x'
-          ; button to leave terminal
+          ; Timeout handling: Simulate pushed 'x' button to leave terminal
           ;--------------------------------------
                     lda       #'x'
                     bra       Enter@@
 _1@@                                              ; No timeout
                     jsr       scigetc             ; Check character from useer
                     bcc       Loop@@              ; No character arrived, wait further
-                    mov       #250,comtimer       ; Character arrived, pull up 8s timer
+                    @msec     8000                ; Character arrived, pull up 8s timer
           ;-------------------------------------- ; Change Linux ENTER key to Windows ENTER key
-                    cmp       #10                 ; Linux ENTER
+                    cmpa      #LF                 ; Linux ENTER
                     bne       Enter@@
-                    lda       #13                 ; Windows ENTER
+                    lda       #CR                 ; Windows ENTER
 Enter@@             jsr       sciputc             ; Echo back the pushed key
                     tsta                          ; Set CCR to be able to use conditional branches after return
                     rts
@@ -103,28 +86,18 @@ Terminal            proc
                     clr       cs_trign            ; Reset pending connection attempt
                     ldhx      #termstr
                     jsr       sciputs
-                    mov       #250,comtimer       ; 32ms * 250 ~= 8s
+                    @msec     8000
 ?Terminal           bsr       egetkey
-                    cmp       #'x'
-                    beq       Done@@
-                    cmp       #'r'
-                    beq       *                   ; proci reset
-                    cmp       #'d'
-                    beq       ?TermDump
-                    cmp       #'n'
-                    beq       ?TermDumpN
-                    cmp       #'a'
-                    beq       ?TermDumpA
-                    cmp       #'b'
-                    beq       ?TermDumpB
-                    cmp       #'?'
-                    beq       ?TermHelp
-                    cmp       #'t'
-                    jeq       term_text
-                    cmp       #'h'
-                    jeq       term_hexa
-                    cmp       #'e'
-                    jeq       term_erase
+                    cbeqa     #'x',Done@@
+                    cbeqa     #'r',*              ; proci reset
+                    cbeqa     #'d',?TermDump
+                    cbeqa     #'n',?TermDumpN
+                    cbeqa     #'a',?TermDumpA
+                    cbeqa     #'b',?TermDumpB
+                    cbeqa     #'?',?TermHelp
+                    @cjeqa    #'t',term_text
+                    @cjeqa    #'h',term_hexa
+                    @cjeqa    #'e',term_erase
                     bra       ?Terminal
 Done@@              @putn
                     rts
@@ -186,8 +159,7 @@ dumpline            proc
                     @putspace
                     lda       #4
                     bsr       dumphn
-                    @putspace
-                    @putspace
+                    @putspace 2
                     lda       #4
                     bsr       dumphn
                     @putspace
@@ -206,13 +178,13 @@ dumpline            proc
 
 ;*******************************************************************************
 
-dumpan              proc                          ; Dump ascii n-times
+dumpan              proc                          ; Dump ASCII n-times
 Loop@@              psha
                     lda       ,x
-          ;-------------------------------------- ; If character is not displayable, print dot
-                    cmp       #' '
+          ;-------------------------------------- ; For non-displayable char, print dot
+                    cmpa      #' '
                     blo       Dot@@
-                    cmp       #$7F
+                    cmpa      #$7F
                     bls       Char@@
 Dot@@               lda       #'.'
 Char@@              jsr       sciputc
@@ -304,16 +276,16 @@ term_erase          proc
 gethexadata         proc
           ;-------------------------------------- ; Check if data is not too long
                     lda       wr_datac
-                    cmp       #128
+                    cmpa      #128
                     @req
                     jsr       egetkey             ; Read a character from user
-                    cmp       #13                 ; Windows enter
+                    cmpa      #CR                 ; Windows enter
                     @req
                     bsr       convtoval           ; Convert character to 4 bits binary value
                     nsa                           ; Shift up by 4 bits
                     psha                          ; Save high nibble
                     jsr       egetkey             ; Read a character from user
-                    cmp       #13                 ; Windows enter
+                    cmpa      #CR                 ; Windows enter
                     @req
                     bsr       convtoval           ; Convert character to 4 bits binary value
                     ldhx      wr_datap            ; Load buffer pointer as index
@@ -330,11 +302,11 @@ gethexadata         proc
 gettextdata         proc
           ;-------------------------------------- ; Check if data is not too long
 Loop@@              lda       wr_datac
-                    cmp       #128
+                    cmpa      #128
                     @req
 
                     jsr       egetkey             ; Read a character from user
-                    cmp       #$0d                ; Windows enter
+                    cmpa      #CR                 ; Windows enter
                     @req
                     ldhx      wr_datap            ; Load buffer pointer as index
                     sta       ,x                  ; Write character to buffer
@@ -355,21 +327,21 @@ getdata_next        proc
 ; Convert character to 4 bits binary value
 
 convtoval           proc
-                    sub       #48
+                    sub       #'0'
                     bmi       _0@@
-                    cmp       #10
+                    cmpa      #10
                     blo       Done@@
                     sub       #7
                     bmi       _0@@
-                    cmp       #10
+                    cmpa      #10
                     blo       _0@@
-                    cmp       #16
+                    cmpa      #16
                     blo       Done@@
                     sub       #32
                     bmi       _0@@
-                    cmp       #10
+                    cmpa      #10
                     blo       _0@@
-                    cmp       #16
+                    cmpa      #16
                     blo       Done@@
 _0@@                clra
 Done@@              and       #$0F

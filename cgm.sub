@@ -13,6 +13,8 @@
 ; fVRS - fVCLK = 12800
 ; (fNUM * 2^E) /2 = 142800
 
+                    #spauto
+
 PLLInit             proc
                     clr       PCTL                ; turn off PLL
                     bset      1,PCTL              ; E=2 (PLL_E2)

@@ -35,13 +35,13 @@ SCIInit             proc
 sciputb             proc
                     psha      ch@@
                     pshhx
-                    nsa                           ; First upper 4 bits
+                    nsa                           ; Upper nibble
                     and       #$0F
                     tax
                     clrh
                     lda       hexakars,x
                     bsr       sciputc
-                    lda       ch@@,sp             ; Next lower 4 bits
+                    lda       ch@@,sp             ; Lower nibble
                     and       #$0F
                     tax
                     clrh
@@ -72,7 +72,7 @@ Loop@@              lda       ,x
                     bsr       sciputc
                     aix       #1
                     bra       Loop@@
-Done@@              rts
+Done@@              equ       :AnRTS
 
 ;*******************************************************************************
 ; Prints a character from A

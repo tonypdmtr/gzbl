@@ -6,8 +6,13 @@
 ; MACROS
 ;*******************************************************************************
 
-tim                 macro
-                    mov       #30,comtimer        ; 32.768 ms * 30 ~= 1s
+msec                macro     msec
+                    mdef      1,1000              ;default is 1000 msec = 1s
+                    #temp     ~1~*1000/32768      ;32.768 ms * msec
+          #ifz :temp
+                    merror    {~1~} is less than minimum possible (32.768)
+          #endif
+                    mov       #:temp,comtimer
                     endm
 
 ;*******************************************************************************
