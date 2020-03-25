@@ -41,7 +41,7 @@ and bootloader waits for download attempt for infinite.
 for binary download, first a connection have to be done.
 The connection procedure is, that the downloader periodically sends four 0x1C character as connection attempt.
 While the bootloader is running, it waits for these four consecutive bytes, and if bootloader receive,
-it sends back connection acknoledgement. This is four consecutive 0x3E bytes.
+it sends back connection acknoledgement. This is four consecutive 0xE3 bytes.
 
 If connection was successfull, the bootloader waits for data frames. 
 Once a data frame is received and proceeded, bootloader sends a response about the data frame. 
