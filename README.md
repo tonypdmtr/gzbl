@@ -48,7 +48,7 @@ The connection procedure is that the downloader periodically sends four 0x1C
 characters as a connection attempt.
 While the bootloader is running, it waits for these four consecutive bytes, and
 if received, it sends back a connection acknowledgement. This is made of four
-consecutive 0x3E bytes.
+consecutive 0xE3 bytes.
 
 If the connection was successful, the bootloader waits for data frames.
 Once a data frame is received and processed, the bootloader sends a response
