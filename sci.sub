@@ -13,13 +13,12 @@ hexakars            fcc       '0123456789ABCDEF'
 ;*******************************************************************************
 
 ;*******************************************************************************
-; Initialize SCI controller
+; Initialize SCI controller for 57600 bps
 
                     #spauto
 
 SCIInit             proc
                     clr       SCC3
-          ;-------------------------------------- ; 57600
                     mov       #SCBR_PD_1+SCBR_BD_1,SCBR
                     mov       #$26,SCPSC          ; PDS(1)+PSSB(6)
 
@@ -28,7 +27,7 @@ SCIInit             proc
                     rts
 
 ;*******************************************************************************
-; Prints a byte in hexa format from A.
+; Prints a byte in hexa format from A
 
                     #spauto
 

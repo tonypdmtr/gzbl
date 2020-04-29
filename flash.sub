@@ -144,7 +144,7 @@ write               proc
                     ldhx      #data
                     lda       dump_addr+1         ; Offset inside a page
                     and       #$7F
-                    jsr       addhxanda
+                    jsr       aax
                     sthx      mc_dest
 
                     ldx       wr_datac
@@ -209,6 +209,11 @@ _End@@              jsr       ROUTINES_IN_RAM     ; Now jump up to RAM for erase
                     sta       address+1
                     rts
 
+;*******************************************************************************
+                    #push
+                    #RAM
+ROUTINES_IN_RAM     rmb       ::ramprog           ; Start of area of Flash handler routines in RAM
+                    #pull
 ;*******************************************************************************
                     #sp
 ;*******************************************************************************

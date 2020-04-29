@@ -9,9 +9,7 @@
 putspace            macro     Count
                     mdef      1,1
                     lda       #' '
-                    mdo
-                    jsr       sciputc
-                    mloop     ~1~
+                    jsr:~1~   sciputc
                     endm
 ;-------------------------------------------------------------------------------
 putn                macro
@@ -23,21 +21,21 @@ putn                macro
 ; STRINGS
 ;*******************************************************************************
 
-startstrt           fcs       ' Push T button for terminal!',NL
-termstr             fcs       'Serial terminal. Push ? for help!',NL
-warn1str            fcs       NL,'Warning! Last byte was half byte.',NL
-err1str             fcs       NL,'Error! Data outside page.',NL
-err2str             fcs       NL,'Error! Address too high.',NL
-helpstr             fcc       NL,'x : Exit terminal.'
-                    fcc       NL,'r : Reset MCU.'
-                    fcc       NL,'dAAAA : Dump from address $AAAA (Default $0000).'
-                    fcc       NL,'n : Next (Dump).'
-                    fcc       NL,'b : Back (Dump).'
-                    fcc       NL,'a : Again (Dump).'
-                    fcc       NL,'hAAAA11223344 [ENTER] : Hexa write from address $AAAA,'
-                    fcc       NL,'tAAAAwww.butyi.hu [ENTER] : Text write from address $AAAA,'
-                    fcc       NL,'eAAAA : Erase page from address $AAAA (128 bytes).'
-                    fcs       NL
+startstrt           fcs       ' Push T button for terminal!',LF
+termstr             fcs       'Serial terminal. Push ? for help!',LF
+warn1str            fcs       LF,'Warning! Last byte was half byte.',LF
+err1str             fcs       LF,'Error! Data outside page.',LF
+err2str             fcs       LF,'Error! Address too high.',LF
+helpstr             fcc       LF,'x : Exit terminal.'
+                    fcc       LF,'r : Reset MCU.'
+                    fcc       LF,'dAAAA : Dump from address $AAAA (Default $0000).'
+                    fcc       LF,'n : Next (Dump).'
+                    fcc       LF,'b : Back (Dump).'
+                    fcc       LF,'a : Again (Dump).'
+                    fcc       LF,'hAAAA11223344 [ENTER] : Hexa write from address $AAAA,'
+                    fcc       LF,'tAAAAwww.butyi.hu [ENTER] : Text write from address $AAAA,'
+                    fcc       LF,'eAAAA : Erase page from address $AAAA (128 bytes).'
+                    fcs       LF
 
 ;*******************************************************************************
 
@@ -102,35 +100,60 @@ Terminal            proc
 Done@@              @putn
                     rts
 
-?TermDumpB          ldhx      dump_addr
+;*******************************************************************************
+
+?TermDumpB          proc
+                    bsr       ?TermDumpAB
+                    bra       ?TermDumpA
+
+;*******************************************************************************
+
+?TermDumpAB         proc
+                    ldhx      dump_addr
                     tha
                     deca
                     tah
                     sthx      dump_addr
-?TermDumpA          ldhx      dump_addr
-                    tha
-                    deca
-                    tah
-                    sthx      dump_addr
+                    rts
+
+;*******************************************************************************
+
+?TermDumpA          proc
+                    bsr       ?TermDumpAB
                     bra       ?TermDumpN
-?TermDump           jsr       getdumpaddr
-?TermDumpN          ldhx      dump_addr           ;continue
-                    bsr       dump8lines
+
+;*******************************************************************************
+
+?TermDump           proc
+                    jsr       getdumpaddr
+;                   bra       ?TermDumpN
+
+;*******************************************************************************
+
+?TermDumpN          proc
+                    ldhx      dump_addr           ;continue
+                    bsr       Dump8Lines
                     @putn
-                    bsr       dump8lines
+                    bsr       Dump8Lines
                     @putn
                     sthx      dump_addr
                     bra       ?Terminal
 
 ;*******************************************************************************
 
-dump8lines          proc
+Dump8Lines          proc
                     lda       #8
 Loop@@              psha
                     bsr       dumpline
                     pula
                     dbnza     Loop@@
                     rts
+
+;*******************************************************************************
+
+dumph4              proc                          ; Dump Hexa 4-times
+                    lda       #4
+;                   bra       dumphn
 
 ;*******************************************************************************
 
@@ -154,25 +177,24 @@ dumpline            proc
                     lda       #':'
                     jsr       sciputc
                     @putspace
-                    lda       #4
-                    bsr       dumphn
+                    bsr       dumph4
                     @putspace
-                    lda       #4
-                    bsr       dumphn
+                    bsr       dumph4
                     @putspace 2
-                    lda       #4
-                    bsr       dumphn
+                    bsr       dumph4
                     @putspace
-                    lda       #4
-                    bsr       dumphn
+                    bsr       dumph4
                     @putspace
                     lda       #'|'
                     jsr       sciputc
                     @putspace
                     aix       #-16
-                    lda       #8
-                    bsr       dumpan
+                    bsr       dumpa8
                     @putspace
+;                   bra       dumpa8
+
+;*******************************************************************************
+dumpa8              proc
                     lda       #8
 ;                   bra       dumpan
 
@@ -243,11 +265,11 @@ term_hexa           proc
                     jmp       ?Terminal
           ;--------------------------------------
           ; Check that all addresses to be written
-          ; is lower that bootloader area
+          ; are lower that bootloader area
           ;--------------------------------------
 TermInPage@@        ldhx      dump_addr
                     lda       wr_datac
-                    jsr       addhxanda
+                    jsr       aax
                     cphx      #Start
                     blo       TermAddrGood@@
           ;--------------------------------------
@@ -292,7 +314,7 @@ gethexadata         proc
                     ora       1,sp                ; Binary or with high nibble
                     sta       ,x                  ; Write character to buffer
                     ais       #1                  ; Drop out high nibble from stack
-
+          ;--------------------------------------
                     bsr       getdata_next
                     bra       gethexadata
 

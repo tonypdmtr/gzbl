@@ -4,9 +4,6 @@
 
                     #Uses     gz60.inc            ; Load microcontroller specific register definitions
 
-NL                  equ       10                  ; New line character (Linux)
-ROUTINES_IN_RAM     equ       $0200               ; Start of area of Flash handler routines in RAM
-
 ;*******************************************************************************
                     #RAM
 ;*******************************************************************************
@@ -18,15 +15,14 @@ address             rmb       2                   ; Address variable for flash w
 wr_datap            rmb       2                   ; Write data pointer
 mc_src              rmb       2                   ; memcopy source address
 mc_dest             rmb       2                   ; memcopy destination address
-mc_num              rmb       2                   ; memcopy number of bytes to copy
 p_flcr              rmb       2                   ; Address of flash control register (of Flash1 or Flash2)
 p_flbpr             rmb       2                   ; Address of flash block protection register (of Flash1 or Flash2)
 cs_trign            rmb       1                   ; frame checksum, and before frames number of received trigger characters
 comtimer            rmb       1                   ; timeout timer for serial UART communication
 nosysinfo           rmb       1                   ; Administration that 'no system software' info was already printed out (do not print it again)
-
-wr_datat            equ       $0080               ; 128 byte write data buffer. It can contain data with any length and from any address.
-data                equ       $0100               ; 128 byte buffer for flash manipulation. Always aligned to a complete page
+wr_datat            rmb       128                 ; write data buffer. It can contain data with any length and from any address.
+                    align     $100                ; below always aligned to a complete page
+data                rmb       128                 ; buffer for flash manipulation.
 
 ;*******************************************************************************
                     #ROM
@@ -41,9 +37,9 @@ data                equ       $0100               ; 128 byte buffer for flash ma
 ; Strings
 ;*******************************************************************************
 
-welcome             fcs       NL,'HC908GZ60 BootLoader (github.com/tonypdmtr/gzbl)',NL
-sysstr              fcs       ' Application is starting.',NL
-nsstr               fcs       ' Application is not found. Stay in BootLoader.',NL
+welcome             fcs       LF,'HC908GZ60 BootLoader (github.com/tonypdmtr/gzbl)',LF
+sysstr              fcs       ' Application is starting.',LF
+nsstr               fcs       ' Application is not found. Stay in BootLoader.',LF
 
 ;*******************************************************************************
 ; Routines
@@ -163,8 +159,8 @@ _3@@
                     ldhx      #sysstr
                     jsr       sciputs
           ;-------------------------------------- ; Load start addess of system software, and jump there
-                    lda       Vpll
-                    tah
+                    ldx       Vpll
+                    txh
                     ldx       Vpll+1
                     jmp       ,x
 
@@ -397,9 +393,3 @@ answer              proc
 ;*******************************************************************************
                     org       Vreset
                     dw        Start
-
-?                   macro
-                    #Hint     ~'......................................................................................................'.1.{:width-62}~ {1927(f4)} bytes, RAM: {21(f5)}, CRC: $F05E
-                    endm
-
-                    @?

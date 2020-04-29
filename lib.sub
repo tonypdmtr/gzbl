@@ -10,16 +10,15 @@ Done$$$             endm
 ;*******************************************************************************
 ; hx = hx + a  (word)
 
-addhxanda           proc
+aax                 proc
                     aax
                     rts
 
 ;*******************************************************************************
 
 memcopy             proc
-                    sthx      mc_num
-          ;--------------------------------------
-Loop@@              ldhx      mc_src
+Loop@@              pshhx                         ;number of bytes to copy
+                    ldhx      mc_src
                     lda       ,x
                     aix       #1
                     sthx      mc_src
@@ -29,9 +28,9 @@ Loop@@              ldhx      mc_src
                     aix       #1
                     sthx      mc_dest
           ;--------------------------------------
-                    ldhx      mc_num
+                    pulhx                         ;HX = number of bytes to copy
                     aix       #-1
-                    sthx      mc_num
+                    cphx      #0
                     bne       Loop@@
                     rts
 
