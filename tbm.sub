@@ -1,0 +1,45 @@
+;*******************************************************************************
+; Time Base Module handler
+;*******************************************************************************
+
+;*******************************************************************************
+; MACROS
+;*******************************************************************************
+
+msec                macro     msec
+                    mdef      1,1000              ;default is 1000 msec = 1s
+                    #temp     ~1~*1000/32768      ;32.768 ms * msec
+          #ifz :temp
+                    merror    {~1~} is less than minimum possible (32.768)
+          #endif
+                    mov       #:temp,comtimer
+                    endm
+
+;*******************************************************************************
+
+TBMInit             proc
+          ;--------------------------------------
+          ; TMBCLKSEL is set to 1, so longer timings will be active
+          ; Divider 262144 needs TBR2-TBR0 = 010b with TMBCLKSEL=1.
+          ; this will result 32.768ms timing with with 8MHz CGMXCLK
+          ;--------------------------------------
+                    mov       #TBON_+TBR1_,TBCR   ; switch on and set TBR1_
+                    clr       comtimer
+                    rts
+
+;*******************************************************************************
+; Scheduled decrement of timer and longtimer
+
+TBMHandle           proc
+                    sta       COPCTL
+                    brclr     7,TBCR,Done@@
+          ;-------------------------------------- ; Here is the time!
+                    tst       comtimer
+                    beq       _1@@
+                    dec       comtimer
+_1@@                bset      3,TBCR              ; Clear timer flag
+Done@@              rts
+
+;*******************************************************************************
+                    #sp
+;*******************************************************************************
