@@ -149,9 +149,9 @@ Bootloader memory range manipulation is also prohibited from here.
 
 ## Compile (Assemble)
 
-Download assembler from [here](http://www.aspisys.com/asm8.htm). It works on both Linux and Windows.
-Run `asm8 gzbl.asm`.
-gzbl.s19 will be ready to download by a monitor loader. I propose [gzml.py](https://github.com/butyi/gzml.py/).
+- Download assembler from [here](http://www.aspisys.com/asm8.htm). It works on both Linux and Windows.
+- Run `asm8 gzbl.asm`.
+- gzbl.s19 is ready to download by a monitor loader. I propose [gzml.py](https://github.com/butyi/gzml.py/).
 
 ## License
 
