@@ -1,0 +1,398 @@
+;*******************************************************************************
+; Terminal service on UART
+;*******************************************************************************
+
+;*******************************************************************************
+; MACROS
+;*******************************************************************************
+
+putspace            macro     Count
+                    mdef      1,1
+                    lda       #' '
+                    jsr:~1~   sciputc
+                    endm
+;-------------------------------------------------------------------------------
+putn                macro
+                    lda       #LF                 ; '\n'
+                    jsr       sciputc
+                    endm
+
+;*******************************************************************************
+; STRINGS
+;*******************************************************************************
+
+startstrt           fcs       ' Push T button for terminal!',LF
+termstr             fcs       'Serial terminal. Push ? for help!',LF
+warn1str            fcs       LF,'Warning! Last byte was half byte.',LF
+err1str             fcs       LF,'Error! Data outside page.',LF
+err2str             fcs       LF,'Error! Address too high.',LF
+helpstr             fcc       LF,'x : Exit terminal.'
+                    fcc       LF,'r : Reset MCU.'
+                    fcc       LF,'dAAAA : Dump from address $AAAA (Default $0000).'
+                    fcc       LF,'n : Next (Dump).'
+                    fcc       LF,'b : Back (Dump).'
+                    fcc       LF,'a : Again (Dump).'
+                    fcc       LF,'hAAAA11223344 [ENTER] : Hexa write from address $AAAA,'
+                    fcc       LF,'tAAAAwww.butyi.hu [ENTER] : Text write from address $AAAA,'
+                    fcc       LF,'eAAAA : Erase page from address $AAAA (128 bytes).'
+                    fcs       LF
+
+;*******************************************************************************
+
+TERM_Init           proc
+                    ldhx      #startstrt
+                    jmp       sciputs
+
+;*******************************************************************************
+
+egetkey             proc
+Loop@@              jsr       TBMHandle           ; loop when waiting for a terminal character
+                    @ledneg                       ; Toggle LED
+          ;--------------------------------------
+          ; Check if timeout elapsed (user didn't do anything in the last 8s)
+          ;--------------------------------------
+                    tst       comtimer
+                    bne       _1@@                ; Jump through on timeout handling
+          ;--------------------------------------
+          ; Timeout handling: Simulate pushed 'x' button to leave terminal
+          ;--------------------------------------
+                    lda       #'x'
+                    bra       Enter@@
+_1@@                                              ; No timeout
+                    jsr       scigetc             ; Check character from useer
+                    bcc       Loop@@              ; No character arrived, wait further
+                    @msec     8000                ; Character arrived, pull up 8s timer
+          ;-------------------------------------- ; Change Linux ENTER key to Windows ENTER key
+                    cmpa      #LF                 ; Linux ENTER
+                    bne       Enter@@
+                    lda       #CR                 ; Windows ENTER
+Enter@@             jsr       sciputc             ; Echo back the pushed key
+                    tsta                          ; Set CCR to be able to use conditional branches after return
+                    rts
+
+;*******************************************************************************
+; Serial terminal
+
+?TermHelp           proc
+                    ldhx      #helpstr
+                    jsr       sciputs
+                    bra       ?Terminal
+
+;*******************************************************************************
+
+Terminal            proc
+                    clr       cs_trign            ; Reset pending connection attempt
+                    ldhx      #termstr
+                    jsr       sciputs
+                    @msec     8000
+?Terminal           bsr       egetkey
+                    cbeqa     #'x',Done@@
+                    cbeqa     #'r',*              ; proci reset
+                    cbeqa     #'d',?TermDump
+                    cbeqa     #'n',?TermDumpN
+                    cbeqa     #'a',?TermDumpA
+                    cbeqa     #'b',?TermDumpB
+                    cbeqa     #'?',?TermHelp
+                    @cjeqa    #'t',term_text
+                    @cjeqa    #'h',term_hexa
+                    @cjeqa    #'e',term_erase
+                    bra       ?Terminal
+Done@@              @putn
+                    rts
+
+;*******************************************************************************
+
+?TermDumpB          proc
+                    bsr       ?TermDumpAB
+                    bra       ?TermDumpA
+
+;*******************************************************************************
+
+?TermDumpAB         proc
+                    ldhx      dump_addr
+                    tha
+                    deca
+                    tah
+                    sthx      dump_addr
+                    rts
+
+;*******************************************************************************
+
+?TermDumpA          proc
+                    bsr       ?TermDumpAB
+                    bra       ?TermDumpN
+
+;*******************************************************************************
+
+?TermDump           proc
+                    jsr       getdumpaddr
+;                   bra       ?TermDumpN
+
+;*******************************************************************************
+
+?TermDumpN          proc
+                    ldhx      dump_addr           ;continue
+                    bsr       Dump8Lines
+                    @putn
+                    bsr       Dump8Lines
+                    @putn
+                    sthx      dump_addr
+                    bra       ?Terminal
+
+;*******************************************************************************
+
+Dump8Lines          proc
+                    lda       #8
+Loop@@              psha
+                    bsr       dumpline
+                    pula
+                    dbnza     Loop@@
+                    rts
+
+;*******************************************************************************
+
+dumph4              proc                          ; Dump Hexa 4-times
+                    lda       #4
+;                   bra       dumphn
+
+;*******************************************************************************
+
+dumphn              proc                          ; Dump Hexa n-times
+Loop@@              psha
+                    lda       ,x
+                    jsr       sciputb
+                    aix       #1
+                    pula
+                    dbnza     Loop@@
+                    rts
+
+;*******************************************************************************
+
+dumpline            proc
+                    @putn
+                    tha
+                    jsr       sciputb
+                    txa
+                    jsr       sciputb
+                    lda       #':'
+                    jsr       sciputc
+                    @putspace
+                    bsr       dumph4
+                    @putspace
+                    bsr       dumph4
+                    @putspace 2
+                    bsr       dumph4
+                    @putspace
+                    bsr       dumph4
+                    @putspace
+                    lda       #'|'
+                    jsr       sciputc
+                    @putspace
+                    aix       #-16
+                    bsr       dumpa8
+                    @putspace
+;                   bra       dumpa8
+
+;*******************************************************************************
+dumpa8              proc
+                    lda       #8
+;                   bra       dumpan
+
+;*******************************************************************************
+
+dumpan              proc                          ; Dump ASCII n-times
+Loop@@              psha
+                    lda       ,x
+          ;-------------------------------------- ; For non-displayable char, print dot
+                    cmpa      #' '
+                    blo       Dot@@
+                    cmpa      #$7F
+                    bls       Char@@
+Dot@@               lda       #'.'
+Char@@              jsr       sciputc
+                    aix       #1
+                    pula
+                    dbnza     Loop@@
+                    rts
+
+;*******************************************************************************
+
+term_common         proc
+                    clr       wr_datac            ; Clear length of write
+                    ldhx      #wr_datat           ; Copy buffer address
+                    sthx      wr_datap            ; to pointer variable
+                    jmp       getdumpaddr         ; Read address from user
+
+;*******************************************************************************
+; Text write into flash
+
+term_text           proc
+                    bsr       term_common         ; Call common part of terminal write
+                    bsr       gettextdata         ; Read text data from user
+                    bra       ?TermCommEnd        ; Jump to write
+
+;*******************************************************************************
+; Hexa data write into flash
+
+term_hexa           proc
+                    bsr       term_common         ; Call common part of terminal write
+                    bsr       gethexadata         ; Read hexa data from user
+          ;--------------------------------------
+          ; Check if complete byte are given (in
+          ; hexa mode one character is just 4 bits)
+          ;--------------------------------------
+                    lda       wr_datac
+                    and       #1
+                    beq       ?TermCommEnd        ; If even, no problem
+          ;-------------------------------------- ; If odd, print a warning
+                    ldhx      #warn1str
+                    jsr       sciputs
+          ;-------------------------------------- ; Check if is there any data to be written
+?TermCommEnd        tst       wr_datac
+                    jeq       ?Terminal           ; If no, jump back to main menu
+          ;--------------------------------------
+          ; Check if data to be written is still
+          ; inside the page. if $80 < ((cim & $7f) + len) then too long
+          ;--------------------------------------
+                    lda       dump_addr+1         ; Low byte of address
+                    and       #$7F
+                    deca
+                    add       wr_datac
+                    bpl       TermInPage@@        ; If positive, so sign bit is zero, then still inside the page
+          ;-------------------------------------- ; Error message about too long data
+                    ldhx      #err1str
+                    jsr       sciputs
+                    jmp       ?Terminal
+          ;--------------------------------------
+          ; Check that all addresses to be written
+          ; are lower that bootloader area
+          ;--------------------------------------
+TermInPage@@        ldhx      dump_addr
+                    lda       wr_datac
+                    jsr       aax
+                    cphx      #Start
+                    blo       TermAddrGood@@
+          ;--------------------------------------
+          ; Write attempt to not allowed area, error message is reported
+          ;--------------------------------------
+                    ldhx      #err2str
+                    jsr       sciputs
+                    jmp       ?Terminal           ; Back to main menu
+
+TermAddrGood@@      jsr       write               ; Write data into flash
+                    clr       dump_addr+1         ; Dump from begin of 256 byte long page
+                    jmp       ?TermDumpN          ; Print dump to verify write was successful
+
+;*******************************************************************************
+; Erase page from terminal
+
+term_erase          proc
+          ;-------------------------------------- ; Read address
+                    bsr       getdumpaddr
+                    jsr       erasepage           ; Erase flash page
+                    jmp       ?TermDumpN          ; Print dump to verify erase was successful
+
+;*******************************************************************************
+; Read hexa bytes from user till ENTER key
+
+gethexadata         proc
+          ;-------------------------------------- ; Check if data is not too long
+                    lda       wr_datac
+                    cmpa      #128
+                    @req
+                    jsr       egetkey             ; Read a character from user
+                    cmpa      #CR                 ; Windows enter
+                    @req
+                    bsr       convtoval           ; Convert character to 4 bits binary value
+                    nsa                           ; Shift up by 4 bits
+                    psha                          ; Save high nibble
+                    jsr       egetkey             ; Read a character from user
+                    cmpa      #CR                 ; Windows enter
+                    @req
+                    bsr       convtoval           ; Convert character to 4 bits binary value
+                    ldhx      wr_datap            ; Load buffer pointer as index
+                    ora       1,sp                ; Binary or with high nibble
+                    sta       ,x                  ; Write character to buffer
+                    ais       #1                  ; Drop out high nibble from stack
+          ;--------------------------------------
+                    bsr       getdata_next
+                    bra       gethexadata
+
+;*******************************************************************************
+; Read string from user till ENTER key
+
+gettextdata         proc
+          ;-------------------------------------- ; Check if data is not too long
+Loop@@              lda       wr_datac
+                    cmpa      #128
+                    @req
+
+                    jsr       egetkey             ; Read a character from user
+                    cmpa      #CR                 ; Windows enter
+                    @req
+                    ldhx      wr_datap            ; Load buffer pointer as index
+                    sta       ,x                  ; Write character to buffer
+
+                    bsr       getdata_next
+                    bra       Loop@@
+
+;*******************************************************************************
+
+getdata_next        proc
+                    inc       wr_datac            ; Increase length
+                    ldhx      wr_datap            ; Increase pointer
+                    aix       #1
+                    sthx      wr_datap
+                    rts
+
+;*******************************************************************************
+; Convert character to 4 bits binary value
+
+convtoval           proc
+                    sub       #'0'
+                    bmi       _0@@
+                    cmpa      #10
+                    blo       Done@@
+                    sub       #7
+                    bmi       _0@@
+                    cmpa      #10
+                    blo       _0@@
+                    cmpa      #16
+                    blo       Done@@
+                    sub       #32
+                    bmi       _0@@
+                    cmpa      #10
+                    blo       _0@@
+                    cmpa      #16
+                    blo       Done@@
+_0@@                clra
+Done@@              and       #$0F
+                    rts
+
+;*******************************************************************************
+
+getdumpaddr         proc
+                    jsr       egetkey
+                    bsr       convtoval           ; Convert character to 4 bits binary value
+                    nsa
+                    sta       dump_addr
+
+                    jsr       egetkey
+                    bsr       convtoval           ; Convert character to 4 bits binary value
+                    ora       dump_addr
+                    sta       dump_addr
+
+                    jsr       egetkey
+                    bsr       convtoval           ; Convert character to 4 bits binary value
+                    nsa
+                    sta       dump_addr+1
+
+                    jsr       egetkey
+                    bsr       convtoval           ; Convert character to 4 bits binary value
+                    ora       dump_addr+1
+                    sta       dump_addr+1
+                    rts
+
+;*******************************************************************************
+                    #sp
+;*******************************************************************************

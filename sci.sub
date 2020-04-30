@@ -1,0 +1,89 @@
+;*******************************************************************************
+; Serial Communication interface
+;*******************************************************************************
+
+;*******************************************************************************
+; STRINGS
+;*******************************************************************************
+
+hexakars            fcc       '0123456789ABCDEF'
+
+;*******************************************************************************
+; FUNCTIONS
+;*******************************************************************************
+
+;*******************************************************************************
+; Initialize SCI controller for 57600 bps
+
+                    #spauto
+
+SCIInit             proc
+                    clr       SCC3
+                    mov       #SCBR_PD_1+SCBR_BD_1,SCBR
+                    mov       #$26,SCPSC          ; PDS(1)+PSSB(6)
+
+                    mov       #ENSCI_,SCC1
+                    mov       #TE_+RE_,SCC2
+                    rts
+
+;*******************************************************************************
+; Prints a byte in hexa format from A
+
+                    #spauto
+
+sciputb             proc
+                    psha      ch@@
+                    pshhx
+                    nsa                           ; Upper nibble
+                    and       #$0F
+                    tax
+                    clrh
+                    lda       hexakars,x
+                    bsr       sciputc
+                    lda       ch@@,sp             ; Lower nibble
+                    and       #$0F
+                    tax
+                    clrh
+                    lda       hexakars,x
+                    bsr       sciputc
+                    pull
+                    rts
+
+;*******************************************************************************
+; Tries to read character from SCI. Carry bit shows if there is received character in A or not.
+
+                    #spauto
+
+scigetc             proc
+                    brclr     5,SCS1,Done@@       ; SCRF = 1 ?
+                    lda       SCDR
+                    sec                           ; RX info in carry bit
+Done@@              rts
+
+;*******************************************************************************
+; Prints a string. String address is in H:X
+
+                    #spauto
+
+sciputs             proc
+Loop@@              lda       ,x
+                    beq       Done@@
+                    bsr       sciputc
+                    aix       #1
+                    bra       Loop@@
+Done@@              equ       :AnRTS
+
+;*******************************************************************************
+; Prints a character from A
+
+                    #spauto
+
+sciputc             proc
+Loop@@              bsr       TBMHandle
+                    brclr     7,SCS1,Loop@@       ; wait to send out the previous character
+                    sta       SCDR                ; also SCTE is cleared here
+                    rts
+
+;*******************************************************************************
+                    #sp
+;*******************************************************************************
