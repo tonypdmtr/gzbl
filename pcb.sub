@@ -14,26 +14,26 @@ LEDMASK             equ       $20
 ;*******************************************************************************
 
 LEDINIT             macro
-                    ;...       Write hardware specific LED manipulation
+                    !...       Write hardware specific LED manipulation
                     endm
 ;-------------------------------------------------------------------------------
 LEDNEG              macro
-                    ;...       Write hardware specific LED manipulation
+                    !...       Write hardware specific LED manipulation
                     endm
 ;-------------------------------------------------------------------------------
 LEDOFF              macro
-                    ;...       Write hardware specific LED manipulation
+                    !...       Write hardware specific LED manipulation
                     endm
 ;-------------------------------------------------------------------------------
 LEDON               macro
-                    ;...       Write hardware specific LED manipulation
+                    !...       Write hardware specific LED manipulation
                     endm
 
 ;*******************************************************************************
 ; Here shall be PCB related init functions, like intro on LCD display.
 
 PCB_Init            proc
-                    ;...
+                    !...
                     rts
 
 ;*******************************************************************************
