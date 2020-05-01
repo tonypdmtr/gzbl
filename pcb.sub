@@ -14,19 +14,19 @@ LEDMASK             equ       $20
 ;*******************************************************************************
 
 LEDINIT             macro
-                    !...       Write hardware specific LED manipulation
+                    !...        Write hardware specific LED manipulation
                     endm
 ;-------------------------------------------------------------------------------
 LEDNEG              macro
-                    !...       Write hardware specific LED manipulation
+                    !...        Write hardware specific LED manipulation
                     endm
 ;-------------------------------------------------------------------------------
 LEDOFF              macro
-                    !...       Write hardware specific LED manipulation
+                    !...        Write hardware specific LED manipulation
                     endm
 ;-------------------------------------------------------------------------------
 LEDON               macro
-                    !...       Write hardware specific LED manipulation
+                    !...        Write hardware specific LED manipulation
                     endm
 
 ;*******************************************************************************
