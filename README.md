@@ -144,22 +144,26 @@ Terminal has an 8 second timeout. If you don't press any key for 8 seconds,
 the Terminal will exit so as to not block running the user's application.
 
 Press '?' for help. Terminal echoes each received character for confirmation.
-Write is page based here also, so it is not allowed to write across page boundaries.
-Bootloader memory range manipulation is also prohibited from here.
+Write is page based here also, so it is not allowed to write across page
+boundaries. Bootloader memory range manipulation is also prohibited from here.
 
 ## Compile (Assemble)
 
-- Download assembler from [here](http://www.aspisys.com/asm8.htm). It works on both Linux and Windows.
+- Download assembler from [here](http://www.aspisys.com/asm8.htm).
+  It works on both Linux and Windows.
 - Run `asm8 gzbl.asm`.
-- gzbl.s19 is ready to download by a monitor loader. I propose [gzml.py](https://github.com/butyi/gzml.py/).
+- gzbl.s19 is ready to download by a monitor loader.
+  I propose [gzml.py](https://github.com/butyi/gzml.py/).
 
 ## License
 
 This is free software. You can do anything you want with it.
-While I've been using Linux, I got so much support from free projects, I am happy if I can contibute back to the community.
+While I've been using Linux, I got so much support from free projects,
+I am happy if I can contibute back to the community.
 
 ## Keywords
 
-Motorola, Freescale, NXP, MC68HC908GZ60, 68HC908GZ60, HC908GZ60, MC908GZ60, 908GZ60, HC908GZ48, HC908GZ32, HC908GZ, 908GZ
+Motorola, Freescale, NXP, MC68HC908GZ60, 68HC908GZ60, HC908GZ60, MC908GZ60,
+908GZ60, HC908GZ48, HC908GZ32, HC908GZ, 908GZ
 
 ###### 2019 Janos Bencsik
