@@ -27,6 +27,21 @@ SCIInit             proc
                     rts
 
 ;*******************************************************************************
+; Purpose: Convert a binary number to its hex ASCII equivalent
+; Input  : A = binary number (0..15)
+; Output : A = ASCII equivalent ('0'..'9','A'..'F')
+; Note(s):
+                    #spauto
+
+ToHexASCII          proc
+                    and       #$0F
+                    add       #$90
+                    daa
+                    adc       #$40
+                    daa
+                    rts
+
+;*******************************************************************************
 ; Prints a byte in hexa format from A
 
                     #spauto
@@ -35,16 +50,10 @@ sciputb             proc
                     psha      ch@@
                     pshhx
                     nsa                           ; Upper nibble
-                    and       #$0F
-                    tax
-                    clrh
-                    lda       hexakars,x
+                    bsr       ToHexASCII
                     bsr       sciputc
                     lda       ch@@,sp             ; Lower nibble
-                    and       #$0F
-                    tax
-                    clrh
-                    lda       hexakars,x
+                    bsr       ToHexASCII
                     bsr       sciputc
                     pull
                     rts
