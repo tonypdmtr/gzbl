@@ -58,7 +58,7 @@ Serial interface is set for 57600 bps, 8-N-1 operation.
 Main function of a bootloader is to be able to (re-)download easily and fast
 the user's application, which is the main function of the embedded system.
 After power on, the bootloader starts. It waits for 1 sec for connection attempt.
-If there was attempt to use bootloader services, it runs the user's application.
+If there wasn't attempt to use bootloader services, it runs the user's application.
 If there is no user application loaded, execution remains in the bootloader,
 which waits for a download attempt indefinitely.
 
@@ -80,8 +80,8 @@ case of a successful write, send the next frame.
 
 As you may know, Flash program memory always consists of pages. Page is the
 smallest part of Flash memory that can be erased independently.
-This means, if we want to change one byte in the Flash program memory, we need
-to first save the page data into RAM, erase the complete page, and then copy
+This means, if we want to change one byte in the Flash program memory, first we 
+need to save the page data into RAM, erase the complete page, and then copy
 back the saved data together with the modified byte.
 Therefore, my concept is that I always send complete page in a frame. This
 allows for simpler bootloader code.
@@ -95,8 +95,8 @@ application.
 Therefore, it is proposed for the downloader that it first erases the start
 vector of the user software, and writes it again at the end of a successful
 download procedure only. This ensures, that in case of broken download, the
-reset vector will be empty, and the bootloader will not attempt to run the user
-application.
+reset vector will be empty, and the bootloader will not attempt to run the 
+corrupt user application.
 
 Let's see the frame structure of a data frame.
 
