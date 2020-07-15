@@ -151,6 +151,9 @@
 ;*           : 19.11.26 v2.25 EndStats macro now adds ?HANDLER_CYCLES display
 ;*           : 20.02.12 v2.26 Added Msg macro to silence debugging messages
 ;*           :                unless SHOW_ALL_MESSAGES is defined
+;*           : 20.06.04 v2.27 Simplified ReadPin macro
+;*           : 20.06.17 v2.28 Removed cbeq macro and rewrote cbne to use only cbeq
+;*           : 20.07.15 v2.29 Added CopyPin macro to copy pin state to another pin
 ;*******************************************************************************
 
                     #Exit     _MACROS_
@@ -1828,13 +1831,20 @@ Pin                 macro     [[PinName,]PORT[,BitNumber]]
               #ifb ~text~
                     merror    PORT parm required on first use
               #endif
+                    #temp
+              #ifdef ~text~.
                     #temp     ~text~.+1
+              #endif
 ~label~             set       ~text~
 ~label~.            equ       {:temp}
 ~label~_            equ       1<~label~.
                     mset      0,~label~
           #endif
           #ifb ~label~
+            #if :n = 1
+                    mset      0,~1~
+                    mexit
+            #endif
                     mreq      1,2:PinName,PORT[,BitNumber]
                     mdef      3,0
                     mset      0,~1~
@@ -1900,12 +1910,20 @@ ExpPin              macro     PinName[,PinName]*
 ; Read the status of a PIN into the CCR[C]
 
 ReadPin             macro     PinName
-          #ifb ~2~
-                    !brset    ~1~.,~1~,:pc+3
-          #else
-                    !brset    ~1~,~2~,:pc+3
-          #endif
+                    mdef      2,~1'.'~
+                    !brset    ~1'.'~.,~2~,:pc+3
                     endm
+
+;*******************************************************************************
+; Copy pin state to another pin
+
+CopyPin             macro     FromPin,ToPin
+                    @@ReadPin ~1~                 ;;read source pin
+                    bcc       _0$$$               ;;if low, go copy it
+                    @@bset    ~2~                 ;;else, make target high
+                    bra       Done$$$             ;;we're done
+_0$$$               @@bclr    ~2~                 ;;make target low
+Done$$$             endm
 
 ;*******************************************************************************
 ; Set pull-up for given PIN(s)
@@ -2037,49 +2055,37 @@ Toggle              macro     PinName[,PinName]*
                     endm
 
 ;*******************************************************************************
-; CBEQ for any address (not quite as true as it may affect the CCR)
-
-cbeq                macro     CompareVariable[,Index],Address
-          #ifparm ~3~
-                    !cbeq     ~@~
-                    mexit
-          #endif
-          #ifparm ~1~ = x+
-                    !cbeq     ~@~
-                    mexit
-          #endif
-          #ifz ~1~&$FFFFFF00
-                    !cbeq     ~@~
-                    mexit
-          #endif
-          #ifparm ~2~ = *
-                    mset      2,{*}
-          #endif
-                    cmpa      ~1~
-                    beq       ~2~
-                    endm
-
-;*******************************************************************************
-; CBEQA complement (not quite as true as it affects the CCR)
+; CBEQA complement
 
 cbnea               macro     CompareTarget,Address
           #ifparm ~2~ = *
                     mset      2,{*}
           #endif
-                    cmpa      ~1~
-                    bne       ~2~
-                    endm
+                    cbeqa     ~1~,Done$$$
+                    bra       ~2~
+Done$$$             endm
 
 ;*******************************************************************************
-; CBEQX complement (not quite as true as it affects the CCR)
+; CBEQ  complement
+
+cbne                macro     CompareTarget,Address
+          #ifparm ~2~ = *
+                    mset      2,{*}
+          #endif
+                    cbeq      ~1~,Done$$$
+                    bra       ~2~
+Done$$$             endm
+
+;*******************************************************************************
+; CBEQX complement
 
 cbnex               macro     CompareTarget,Address
           #ifparm ~2~ = *
                     mset      2,{*}
           #endif
-                    cmpx      ~1~
-                    bne       ~2~
-                    endm
+                    cbeqx     ~1~,Done$$$
+                    bra       ~2~
+Done$$$             endm
 
 ;*******************************************************************************
 
